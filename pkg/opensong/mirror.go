@@ -5,6 +5,7 @@ import (
 	"bitbucket.org/cezary_butler/opensong-remote-display/pkg/xml"
 	"fmt"
 	"golang.org/x/net/websocket"
+	"image"
 	"image/jpeg"
 	"io"
 	"log"
@@ -21,78 +22,96 @@ type OpenSong struct {
 
 const subscribe = "/ws/subscribe/presentation"
 
+//TODO find a way to safely reconnect after connection error
+//TODO handle sever not in presentation mode
+//TODO add context support
+//FIXME on first receive no image is being displayed
+//FIXME images are different for what is on the screen
+
 func (s *OpenSong) InitMirroring() {
 	conn, err := websocket.Dial(fmt.Sprintf("ws://%s/ws", s.host), "", "http://localhost")
 
 	if err != nil {
 		panic(err)
 	}
-	defer closeRes(conn)
+	//defer closeRes(conn) //TODO find a way to close the connection at just the right moment (context might be useful)
 
-	go func() {
-		response := ""
-		for {
-			log.Print("waiting for OK")
-			err = websocket.Message.Receive(conn, &response)
-			if err != nil {
-				log.Print("error while waiting for ok", err)
-				continue
-			}
-			if response != "" {
-				log.Printf("received %s, waiting for subscribed messages", response)
-				go func() {
-					for { //todo check context
-						log.Print("going to receive")
+	go s.subscribeEvents(conn)
+	go s.listenForConfirmation(conn)
 
-						mgs := Response{}
-						//mgs := ""
-						err = xml.XML.Receive(conn, &mgs)
-						if err != nil {
-							log.Printf("received error %+e", err)
-							continue
-						}
-						log.Printf("received %d (%s:%s)\n", mgs.Presentation.Slide.ItemNumber,
-							mgs.Presentation.Slide.Name, mgs.Presentation.Slide.Title)
-						uriStr := fmt.Sprintf("http://%s/presentation/slide/%d/preview/height:%d/widht:%d/quality:%d",
-							s.host, mgs.Presentation.Slide.ItemNumber, s.height, s.width, s.quality)
+}
 
-						func() {
-							img, err := http.Get(uriStr)
-							if err != nil {
-								log.Printf("received error while getting image %+e", err)
-								return
-							}
-							//todo func
-							defer closeRes(img.Body)
+func (s *OpenSong) listenForConfirmation(conn *websocket.Conn) {
+	response := ""
 
-							all, err := jpeg.Decode(img.Body)
-							if err != nil {
-								log.Printf("received error while reading image %+e", err)
-								return
-							}
+	log.Print("waiting for OK")
+	for {
+		err := websocket.Message.Receive(conn, &response)
 
-							s.display.DisplayImage(all)
-						}()
-						//log.Printf("received %s", mgs)
-					}
-				}()
-				return
-			}
-		}
-	}()
-
-	go func() {
-
-		log.Print("will send subscription", subscribe)
-
-		err = websocket.Message.Send(conn, subscribe)
 		if err != nil {
-			log.Print("error while subscribing")
-			panic(err)
+			log.Print("error while waiting for ok", err)
+			continue
 		}
+		//TODO get currently presented image
+		if response != "" {
+			log.Print("Received ", response, "listening for future events")
+			s.listenForEvents(conn)
+		}
+	}
+}
 
-		log.Print("will show and run")
-	}()
+func (s *OpenSong) listenForEvents(conn *websocket.Conn) {
+	for {
+		log.Print("going to receive")
+
+		mgs := Response{}
+		//mgs := ""
+		err := xml.XML.Receive(conn, &mgs)
+		if err != nil {
+			log.Printf("received error %+e", err)
+			continue
+		}
+		log.Printf("received %d (%s:%s)\n", mgs.Presentation.Slide.ItemNumber,
+			mgs.Presentation.Slide.Name, mgs.Presentation.Slide.Title)
+		uriStr := fmt.Sprintf("http://%s/presentation/slide/%d/preview/height:%d/widht:%d/quality:%d",
+			s.host, mgs.Presentation.Slide.ItemNumber, s.height, s.width, s.quality)
+
+		image := s.fetchImage(uriStr)
+
+		s.display.DisplayImage(image)
+	}
+}
+
+func (s *OpenSong) fetchImage(uriStr string) image.Image {
+	img, err := http.Get(uriStr)
+	if err != nil {
+		log.Printf("received error while getting image %+e", err)
+		return nil
+	}
+	//todo func
+	defer closeRes(img.Body)
+
+	all, err := jpeg.Decode(img.Body)
+	if err != nil {
+		log.Printf("received error while reading image %+e", err)
+		return nil
+	}
+	return all
+
+}
+
+func (s *OpenSong) subscribeEvents(conn *websocket.Conn) error {
+
+	log.Print("will send subscription", subscribe)
+
+	err := websocket.Message.Send(conn, subscribe)
+	if err != nil {
+		log.Print("error while subscribing", err)
+		return err
+	}
+
+	log.Print("will show and run")
+	return nil
 }
 
 func NewOpenSong(display *fyne.Display, host string, width, height, quality int) *OpenSong {
