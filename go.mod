@@ -1,4 +1,4 @@
-module bitbucket.org/cezary_butler/opensong-remote-display
+module github.com/cezary-butler/opensong-remote-display
 
 go 1.15
 

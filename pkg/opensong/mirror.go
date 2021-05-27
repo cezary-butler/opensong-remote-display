@@ -1,15 +1,16 @@
 package opensong
 
 import (
-	"bitbucket.org/cezary_butler/opensong-remote-display/pkg/display/fyne"
-	"bitbucket.org/cezary_butler/opensong-remote-display/pkg/xml"
 	"fmt"
-	"golang.org/x/net/websocket"
 	"image"
 	"image/jpeg"
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/cezary-butler/opensong-remote-display/pkg/display/fyne"
+	"github.com/cezary-butler/opensong-remote-display/pkg/xml"
+	"golang.org/x/net/websocket"
 )
 
 type OpenSong struct {

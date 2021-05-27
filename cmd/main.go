@@ -1,10 +1,11 @@
 package main
 
 import (
-	"bitbucket.org/cezary_butler/opensong-remote-display/pkg/display/fyne"
-	"bitbucket.org/cezary_butler/opensong-remote-display/pkg/opensong"
 	"flag"
 	"log"
+
+	"github.com/cezary-butler/opensong-remote-display/pkg/display/fyne"
+	"github.com/cezary-butler/opensong-remote-display/pkg/opensong"
 )
 
 var (

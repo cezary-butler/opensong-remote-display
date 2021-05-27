@@ -1,10 +1,11 @@
 package xml
 
 import (
-	"bitbucket.org/cezary_butler/opensong-remote-display/pkg/opensong"
+	"testing"
+
+	"github.com/cezary-butler/opensong-remote-display/pkg/opensong"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/websocket"
-	"testing"
 )
 
 func Test_messageCanBeUnmarshaled(t *testing.T) {
