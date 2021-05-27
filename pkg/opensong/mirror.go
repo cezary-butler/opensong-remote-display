@@ -22,11 +22,12 @@ type OpenSong struct {
 
 const subscribe = "/ws/subscribe/presentation"
 
-//TODO find a way to safely reconnect after connection error
+//TODO find a way to safely reconnect after connection error (detect eof)
 //TODO handle sever not in presentation mode
 //TODO add context support
 //FIXME on first receive no image is being displayed
 //FIXME images are different for what is on the screen
+//TODO find elegant way to handle subscription in the golang
 
 func (s *OpenSong) InitMirroring() {
 	conn, err := websocket.Dial(fmt.Sprintf("ws://%s/ws", s.host), "", "http://localhost")
